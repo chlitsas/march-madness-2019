@@ -2,7 +2,8 @@ import unittest
 
 from src.main.domain.CompactResult import CompactResult
 from src.main.domain.GamePrediction import GamePrediction, Game
-from src.main.predictions import evaluate_predictions
+from src.main.predictions.evaluation import evaluate_predictions, evaluate_predictor
+from src.main.predictions.predictors import FiftyFiftyPredictor
 
 
 def create_compact_result(season, w_team_id, l_team_id):
@@ -27,4 +28,18 @@ class TestPredictionEvaluator(unittest.TestCase):
             create_compact_result(season=2018, w_team_id=4, l_team_id=2)
         ]
         score = evaluate_predictions(2018, game_predictions=game_predictions, compact_results=compact_results)
-        self.assertEqual(1.203972804325936, score)
+        self.assertAlmostEqual(1.20397280432, score, places=10)
+
+    def test_predictor_evaluator(self):
+        games = [Game(1, 2), Game(2, 4)]
+        compact_results = [
+            create_compact_result(season=2018, w_team_id=1, l_team_id=2),
+            create_compact_result(season=2018, w_team_id=4, l_team_id=2)
+        ]
+        score = evaluate_predictor(
+            season=2018,
+            games=games,
+            compact_results=compact_results,
+            predictor=FiftyFiftyPredictor()
+        )
+        self.assertAlmostEqual(0.69314718056, score, places=10)

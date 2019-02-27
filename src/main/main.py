@@ -5,10 +5,6 @@ from src.main.domain.data_parsers import parse_tourney_seeds, parse_compact_resu
 from src.main.predictions import PredictionGenerator
 
 
-def log_loss(win_prob, team_a_wins):
-    return log(win_prob) if team_a_wins else log(1 - win_prob)
-
-
 def write_predictions(filename, game_predictions: [GamePrediction]):
     file = open(filename, 'w')
     file.write('ID,Pred\n')
@@ -33,9 +29,9 @@ if __name__ == '__main__':
             games.append(Game(sorted_seeds[i].team_id, sorted_seeds[j].team_id))
     print(games)
 
-    generator = PredictionGenerator(future_games=games)
+    generator = PredictionGenerator()
 
-    write_predictions('tests.csv', generator.get_predictions())
-    compact_results = [x for x in parse_compact_results(regular_season=False) if x.season == season]
+    write_predictions('tests.csv', generator.get_predictions(future_games=games))
+    compact_results = [x for x in parse_compact_results(regular_season=False) if x.season == 2018]
 
-    # print(parse_compact_results())
+    print(compact_results)
