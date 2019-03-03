@@ -38,9 +38,6 @@ class PredictorEvaluationTemplate:
     # create predictions
     # evaluate predictions
 
-    def train(self, training_seasons: [int]):
-        pass
-
     def evaluate(
             self,
             games_loader,
@@ -49,13 +46,13 @@ class PredictorEvaluationTemplate:
         result = []
         for season in self.active_seasons:
             training = [x for x in self.active_seasons if x != season]
-            self.train(training_seasons=training)
+            self.predictor.train(seasons=training)
             games = games_loader(season)
             compact_results = compact_results_loader(season)
             evaluation = evaluate_predictions(
                 season=season,
                 compact_results=compact_results,
-                game_predictions=self.predictor.get_predictions(games)
+                game_predictions=self.predictor.get_predictions(season=season, games=games)
             )
             result.append([self.predictor_description, season, evaluation])
         return result

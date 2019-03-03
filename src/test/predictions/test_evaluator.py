@@ -55,9 +55,6 @@ class TestPredictionEvaluator(unittest.TestCase):
                 self.active_seasons = [2018]
                 self.predictor_description = 'test'
 
-            def train(self, training_seasons: [int]):
-                super().train(training_seasons)
-
         data = Test().evaluate(
             games_loader=games_loader,
             compact_results_loader=compact_results_loader
