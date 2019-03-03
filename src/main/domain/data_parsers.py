@@ -2,6 +2,7 @@ import csv
 import io
 import pkgutil
 
+from src.main.domain.GamePrediction import Game, create_valid_game
 from src.main.domain.PlayByPlayEvent import PlayByPlayEvent
 from src.main.domain.CompactResult import CompactResult
 from src.main.domain.DetailedResult import DetailedResult
@@ -56,15 +57,26 @@ def parse_compact_results(regular_season=False):
             CompactResult(
                 Season=int(row['Season']),
                 DayNum=int(row['DayNum']),
-                WTeamID=row['WTeamID'],
+                WTeamID=int(row['WTeamID']),
                 WScore=int(row['WScore']),
-                LTeamID=row['LTeamID'],
+                LTeamID=int(row['LTeamID']),
                 LScore=int(row['LScore']),
                 WLoc=row['WLoc'],
                 NumOT=int(row['NumOT'])
             )
         )
     return result
+
+
+def parse_tourney_compact_results(season: int):
+    return [x for x in parse_compact_results(regular_season=False) if x.season == season]
+
+
+def parse_tourney_games(season: int):
+    return [
+        create_valid_game(x.w_team_id, x.l_team_id)
+        for x in parse_compact_results(regular_season=False) if x.season == season
+    ]
 
 
 def parse_detailed_box():

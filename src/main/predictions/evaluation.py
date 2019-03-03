@@ -1,6 +1,6 @@
 from math import log
 from src.main.domain.CompactResult import CompactResult
-from src.main.domain.GamePrediction import GamePrediction, Game
+from src.main.domain.GamePrediction import GamePrediction
 from src.main.predictions.predictors import AbstractPredictor
 
 
@@ -27,14 +27,35 @@ def evaluate_predictions(season: int, game_predictions: [GamePrediction], compac
     return -sum_loss / n
 
 
-def evaluate_predictor(
-        season: int,
-        compact_results: [CompactResult],
-        games: [Game],
-        predictor: AbstractPredictor
-) -> float:
-    return evaluate_predictions(
-        season=season,
-        compact_results=compact_results,
-        game_predictions=predictor.get_predictions(games)
-    )
+class PredictorEvaluationTemplate:
+    predictor: AbstractPredictor
+    active_seasons: [int]
+    predictor_description: str
+    # create data for predictor
+    # instantiate predictor
+    # train predictor
+    # create data for target season
+    # create predictions
+    # evaluate predictions
+
+    def train(self, training_seasons: [int]):
+        pass
+
+    def evaluate(
+            self,
+            games_loader,
+            compact_results_loader
+    ) -> [[]]:
+        result = []
+        for season in self.active_seasons:
+            training = [x for x in self.active_seasons if x != season]
+            self.train(training_seasons=training)
+            games = games_loader(season)
+            compact_results = compact_results_loader(season)
+            evaluation = evaluate_predictions(
+                season=season,
+                compact_results=compact_results,
+                game_predictions=self.predictor.get_predictions(games)
+            )
+            result.append([self.predictor_description, season, evaluation])
+        return result

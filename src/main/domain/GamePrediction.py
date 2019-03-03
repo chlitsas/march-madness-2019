@@ -11,6 +11,12 @@ class Game:
         self.team_b_id = team_b_id
 
 
+def create_valid_game(team_a_id: int, team_b_id: int):
+    if team_a_id < team_b_id:
+        return Game(team_a_id=team_a_id, team_b_id=team_b_id)
+    return Game(team_a_id=team_b_id, team_b_id=team_a_id)
+
+
 class GamePrediction:
     def __init__(
             self,
