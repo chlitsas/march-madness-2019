@@ -54,5 +54,5 @@ class PredictorEvaluationTemplate:
                 compact_results=compact_results,
                 game_predictions=self.predictor.get_predictions(season=season, games=games)
             )
-            result.append([self.predictor_description, season, evaluation])
+            result.append([self.predictor_description, season, evaluation, len(games)])
         return result
