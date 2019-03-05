@@ -9,7 +9,7 @@ from src.main.domain.DetailedResult import DetailedResult
 from src.main.domain.TourneySeed import TourneySeed
 
 
-def parse_pbp():
+def load_pbp():
     with open('../data/PrelimData2018/Events_Prelim2018.csv') as csv_file:
         data = csv.DictReader(csv_file)
         cnt = 0
@@ -27,7 +27,7 @@ def parse_pbp():
             )
 
 
-def parse_tourney_seeds():
+def load_tourney_seeds():
     csv_file = pkgutil.get_data("data.DataFiles", "NCAATourneySeeds.csv")
 
     data = csv.DictReader(io.StringIO(csv_file.decode('utf-8')))
@@ -44,7 +44,7 @@ def parse_tourney_seeds():
     return result
 
 
-def parse_compact_results(regular_season=False):
+def load_compact_results(regular_season=False):
     if regular_season:
         csv_file = pkgutil.get_data("data.DataFiles", "RegularSeasonCompactResults.csv")
     else:
@@ -68,19 +68,22 @@ def parse_compact_results(regular_season=False):
     return result
 
 
-def parse_tourney_compact_results(season: int):
-    return [x for x in parse_compact_results(regular_season=False) if x.season == season]
+def load_tourney_compact_results(season: int):
+    return [x for x in load_compact_results(regular_season=False) if x.season == season]
 
 
-def parse_tourney_games(season: int):
+def load_tourney_games(season: int):
     return [
         create_valid_game(x.w_team_id, x.l_team_id)
-        for x in parse_compact_results(regular_season=False) if x.season == season
+        for x in load_compact_results(regular_season=False) if x.season == season
     ]
 
 
-def parse_detailed_box():
-    csv_file = pkgutil.get_data("data.DataFiles", "NCAATourneyCompactResults.csv")
+def load_detailed_box(regular_season=False):
+    if regular_season:
+        csv_file = pkgutil.get_data("data.DataFiles", "RegularSeasonDetailedResults.csv")
+    else:
+        csv_file = pkgutil.get_data("data.DataFiles", "NCAATourneyDetailedResults.csv")
     data = csv.DictReader(io.StringIO(csv_file.decode('utf-8')))
 
     result = []

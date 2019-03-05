@@ -1,17 +1,19 @@
 from src.main.domain.GamePrediction import Game, GamePrediction
-from src.main.domain.data_parsers import parse_tourney_seeds, parse_tourney_compact_results
+from src.main.domain.data_loaders import load_tourney_seeds, load_tourney_compact_results
 from src.main.predictions.evaluation import PredictorEvaluationTemplate
 from src.main.predictions.predictors import AbstractPredictor, bound_probability
 from sklearn.ensemble import RandomForestClassifier
 
 
 class SeedsTreePredictor(AbstractPredictor):
-    def __init__(self) -> None:
+    def __init__(self, load_tourney_seeds_function, load_tourney_compact_results_function) -> None:
         super().__init__()
+        self.load_tourney_seeds_function = load_tourney_seeds_function
+        self.load_tourney_compact_results_function = load_tourney_compact_results_function
         self.clf = RandomForestClassifier(
             n_estimators=500,
-            max_depth=4,
-            n_jobs=2
+            max_depth=5,
+            n_jobs=4
         )
 
     class Features:
@@ -35,8 +37,8 @@ class SeedsTreePredictor(AbstractPredictor):
         train_data = []
         train_results = []
         for season in seasons:
-            compact_results = parse_tourney_compact_results(season)
-            seeds = [x for x in parse_tourney_seeds() if x.season == season]
+            compact_results = self.load_tourney_compact_results_function(season)
+            seeds = [x for x in self.load_tourney_seeds_function() if x.season == season]
             seeds_map = {}
             for seed in seeds:
                 seeds_map[seed.team_id] = self.Features(region=seed.get_region(), seed=seed.get_seed())
@@ -54,7 +56,7 @@ class SeedsTreePredictor(AbstractPredictor):
         print('training is done')
 
     def get_predictions(self, season: int, games: [Game]) -> [GamePrediction]:
-        seeds = [x for x in parse_tourney_seeds() if x.season == season]
+        seeds = [x for x in self.load_tourney_seeds_function() if x.season == season]
         seeds_map = {}
         for seed in seeds:
             seeds_map[seed.team_id] = self.Features(region=seed.get_region(), seed=seed.get_seed())
@@ -77,6 +79,6 @@ class SeedsTreePredictor(AbstractPredictor):
 class SeedsTreePredictorEvaluator(PredictorEvaluationTemplate):
     def __init__(self) -> None:
         super().__init__()
-        self.predictor = SeedsTreePredictor()
-        self.active_seasons = set([x.season for x in parse_tourney_seeds()])
+        self.predictor = SeedsTreePredictor(load_tourney_seeds, load_tourney_compact_results)
+        self.active_seasons = set([x.season for x in load_tourney_seeds()])
         self.predictor_description = 'seeds_tree'

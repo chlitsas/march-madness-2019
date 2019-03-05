@@ -1,13 +1,14 @@
 from src.main.domain.GamePrediction import Game, GamePrediction
-from src.main.domain.data_parsers import parse_tourney_seeds, parse_compact_results
+from src.main.domain.data_loaders import load_compact_results
 from src.main.predictions.evaluation import PredictorEvaluationTemplate
 from src.main.predictions.predictors import AbstractPredictor, bound_probability
 from sklearn.ensemble import RandomForestClassifier
 
 
 class WinsDefeatsPredictor(AbstractPredictor):
-    def __init__(self) -> None:
+    def __init__(self, load_compact_results_function) -> None:
         super().__init__()
+        self.load_compact_results_function = load_compact_results_function
         self.clf = RandomForestClassifier(
             n_estimators=500,
             max_depth=4,
@@ -24,7 +25,7 @@ class WinsDefeatsPredictor(AbstractPredictor):
             return self.wins / (self.wins + self.defeats)
 
     def get_predictions(self, season: int, games: [Game]) -> [GamePrediction]:
-        results = [x for x in parse_compact_results(regular_season=True) if x.season == season]
+        results = [x for x in self.load_compact_results_function(regular_season=True) if x.season == season]
         teams_map = {}
         for result in results:
             if result.w_team_id in teams_map:
@@ -57,6 +58,6 @@ class WinsDefeatsPredictor(AbstractPredictor):
 class WinsDefeatsEvaluator(PredictorEvaluationTemplate):
     def __init__(self) -> None:
         super().__init__()
-        self.predictor = WinsDefeatsPredictor()
-        self.active_seasons = set([x.season for x in parse_compact_results()])
+        self.predictor = WinsDefeatsPredictor(load_compact_results)
+        self.active_seasons = set([x.season for x in load_compact_results()])
         self.predictor_description = 'wins_defeats'

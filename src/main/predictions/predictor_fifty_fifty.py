@@ -1,5 +1,5 @@
 from src.main.domain.GamePrediction import Game, GamePrediction
-from src.main.domain.data_parsers import parse_tourney_seeds
+from src.main.domain.data_loaders import load_tourney_seeds
 from src.main.predictions.evaluation import PredictorEvaluationTemplate
 from src.main.predictions.predictors import AbstractPredictor
 
@@ -19,9 +19,5 @@ class FiftyFiftyPredictorEvaluator(PredictorEvaluationTemplate):
     def __init__(self) -> None:
         super().__init__()
         self.predictor = FiftyFiftyPredictor()
-        self.active_seasons = set([x.season for x in parse_tourney_seeds()])
-        self.predictor_description = 'test'
-
-    def train(self, training_seasons: [int]):
-        super().train(training_seasons)
-
+        self.active_seasons = set([x.season for x in load_tourney_seeds()])
+        self.predictor_description = 'fifty'

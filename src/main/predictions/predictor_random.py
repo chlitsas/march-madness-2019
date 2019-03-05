@@ -1,7 +1,7 @@
 import random
 
 from src.main.domain.GamePrediction import Game, GamePrediction
-from src.main.domain.data_parsers import parse_tourney_seeds
+from src.main.domain.data_loaders import load_tourney_seeds
 from src.main.predictions.evaluation import PredictorEvaluationTemplate
 from src.main.predictions.predictors import AbstractPredictor
 
@@ -21,7 +21,5 @@ class RandomPredictorEvaluator(PredictorEvaluationTemplate):
     def __init__(self) -> None:
         super().__init__()
         self.predictor = RandomPredictor()
-        self.active_seasons = set([x.season for x in parse_tourney_seeds()])
+        self.active_seasons = set([x.season for x in load_tourney_seeds()])
         self.predictor_description = 'random'
-
-

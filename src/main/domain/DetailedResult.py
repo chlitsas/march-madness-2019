@@ -38,40 +38,40 @@ class DetailedResult:
 
     ) -> None:
         super().__init__()
-        self.season = Season
+        self.season = int(Season)
         self.day_num = DayNum
-        self.w_team_id = WTeamID
-        self.w_score = WScore
-        self.l_team_id = LTeamID
-        self.l_score = LScore
+        self.w_team_id = int(WTeamID)
+        self.w_score = int(WScore)
+        self.l_team_id = int(LTeamID)
+        self.l_score = int(LScore)
         self.w_loc = WLoc
-        self.num_ot = NumOT
-        self.w_fgm = WFGM
-        self.w_fga = WFGA
-        self.w_fgm3 = WFGM3
-        self.w_fga3 = WFGA3
-        self.w_ftm = WFTM
-        self.w_fta = WFTA
-        self.w_or = WOR
-        self.w_dr = WDR
-        self.w_ast = WAst
-        self.w_to = WTO
-        self.w_stl = WStl
-        self.w_blk = WBlk
-        self.w_pf = WPF
-        self.l_fgm = LFGM
-        self.l_fga = LFGA
-        self.l_fgm3 = LFGM3
-        self.l_fga3 = LFGA3
-        self.l_ftm = LFTM
-        self.l_fta = LFTA
-        self.l_or = LOR
-        self.l_dr = LDR
-        self.l_ast = LAst
-        self.l_to = LTO
-        self.l_stl = LStl
-        self.l_blc = LBlk
-        self.l_pf = LPF
+        self.num_ot = int(NumOT)
+        self.w_fgm = int(WFGM)
+        self.w_fga = int(WFGA)
+        self.w_fgm3 = int(WFGM3)
+        self.w_fga3 = int(WFGA3)
+        self.w_ftm = int(WFTM)
+        self.w_fta = int(WFTA)
+        self.w_or = int(WOR)
+        self.w_dr = int(WDR)
+        self.w_ast = int(WAst)
+        self.w_to = int(WTO)
+        self.w_stl = int(WStl)
+        self.w_blk = int(WBlk)
+        self.w_pf = int(WPF)
+        self.l_fgm = int(LFGM)
+        self.l_fga = int(LFGA)
+        self.l_fgm3 = int(LFGM3)
+        self.l_fga3 = int(LFGA3)
+        self.l_ftm = int(LFTM)
+        self.l_fta = int(LFTA)
+        self.l_or = int(LOR)
+        self.l_dr = int(LDR)
+        self.l_ast = int(LAst)
+        self.l_to = int(LTO)
+        self.l_stl = int(LStl)
+        self.l_blc = int(LBlk)
+        self.l_pf = int(LPF)
 
     def winner_scored_more_threes(self):
         return self.w_fgm3 > self.l_fgm3

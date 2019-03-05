@@ -1,15 +1,16 @@
 from src.main.domain.GamePrediction import Game, GamePrediction
-from src.main.domain.data_parsers import parse_tourney_seeds
+from src.main.domain.data_loaders import load_tourney_seeds
 from src.main.predictions.evaluation import PredictorEvaluationTemplate
 from src.main.predictions.predictors import AbstractPredictor, bound_probability
 
 
 class SeedsPredictor(AbstractPredictor):
-    def __init__(self) -> None:
+    def __init__(self, load_tourney_seeds_function) -> None:
         super().__init__()
+        self.load_tourney_seeds_function = load_tourney_seeds_function
 
     def get_predictions(self, season: int, games: [Game]) -> [GamePrediction]:
-        seeds = [x for x in parse_tourney_seeds() if x.season == season]
+        seeds = [x for x in self.load_tourney_seeds_function() if x.season == season]
         max_seed = max([x.get_seed() for x in seeds])
         seeds_map = {}
         for seed in seeds:
@@ -28,6 +29,6 @@ class SeedsPredictor(AbstractPredictor):
 class SeedsPredictorEvaluator(PredictorEvaluationTemplate):
     def __init__(self) -> None:
         super().__init__()
-        self.predictor = SeedsPredictor()
-        self.active_seasons = set([x.season for x in parse_tourney_seeds()])
+        self.predictor = SeedsPredictor(load_tourney_seeds)
+        self.active_seasons = set([x.season for x in load_tourney_seeds()])
         self.predictor_description = 'seeds'
