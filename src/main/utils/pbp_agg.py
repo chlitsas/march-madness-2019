@@ -71,11 +71,49 @@ def calculate_runs():
     for year in range(2010, 2019):
         events_csv_file = pkgutil.get_data('data.PlayByPlay_' + str(year), 'Events_' + str(year) + '.csv')
         data = csv.DictReader(io.StringIO(events_csv_file.decode('utf-8')))
+        list_data = list(data)
+        final_data = []
+        print(len(list_data))
+        for x in list_data:
+            if (int(x['WPoints']) > 0 or int(x['LPoints']) > 0) and int(x['DayNum']) < 133:
+                final_data.append(x)
 
+        print(len(final_data))
         print('annotator is starting for season ' + str(year))
-        result += annotate_run_moments(list(data))
+        result += annotate_run_moments(final_data)
 
     with open('runs_v2.csv', 'w', newline='\n') as csv_file:
+        wr = csv.writer(csv_file, delimiter=',')
+        wr.writerows(result)
+
+
+def calculate_clutch_wins():
+    result = []
+    for year in range(2010, 2019):
+        events_csv_file = pkgutil.get_data('data.PlayByPlay_' + str(year), 'Events_' + str(year) + '.csv')
+        data = csv.DictReader(io.StringIO(events_csv_file.decode('utf-8')))
+        final_data = []
+        for x in data:
+            if (int(x['WPoints']) > 0 or int(x['LPoints']) > 0) and int(x['DayNum']) < 133:
+                final_data.append(x)
+        print('clutch wins calculator is starting for season ' + str(year))
+        last_stored_game = ''
+        for row in final_data:
+            game_id = row['Season']+row['DayNum']+row['WTeamID']+row['LTeamID']
+
+            if last_stored_game != game_id:
+                result.append([int(row['Season']), int(row['WTeamID']), 0, 0, 1, 0])
+                result.append([int(row['Season']), int(row['LTeamID']), 0, 0, 0, 1])
+                last_stored_game = game_id
+
+            if int(row['ElapsedSeconds']) > 2000 and abs(int(row['WPoints']) - int(row['LPoints'])) < 7:
+                idx = len(result)
+                result[idx-2][2] = 1
+                result[idx-2][4] = 0
+                result[idx-1][3] = 1
+                result[idx-1][5] = 0
+
+    with open('clutch_wins.csv', 'w', newline='\n') as csv_file:
         wr = csv.writer(csv_file, delimiter=',')
         wr.writerows(result)
 
@@ -83,12 +121,16 @@ def calculate_runs():
 def read_runs_as_df():
     df = pd.read_csv('./runs.csv')
     print(df.head(10))
+    df['LeadChangeFor'] = df.apply(lambda row: True if row['TeamRun'] and not row['LeadChange'] else False, axis=1)
+    df['LeadChangeAgainst'] = df.apply(lambda row: True if not row['TeamRun'] and row['LeadChange'] else False, axis=1)
     clutch_data = df[df.Clutch] \
         .groupby(['Season', 'TeamID'], as_index=False) \
         .agg({
-            'TeamRun': ['sum', 'count'],
-            'LeadChange': 'sum',
-            'Leading': 'sum',
+        'TeamRun': ['sum', 'count'],
+        'LeadChange': 'sum',
+        'LeadChangeFor': 'sum',
+        'LeadChangeAgainst': 'sum',
+        'Leading': 'sum',
     })
     clutch_data.columns = ['_Clutch'.join(col).strip() for col in clutch_data.columns.values]
     clutch_data = clutch_data.rename(index=str, columns={'Season_Clutch': 'Season', 'TeamID_Clutch': 'TeamID'})
@@ -97,19 +139,37 @@ def read_runs_as_df():
     non_clutch_data = df[df.Clutch != True] \
         .groupby(['Season', 'TeamID'], as_index=False) \
         .agg({
-            'TeamRun': ['sum', 'count'],
-            'LeadChange': 'sum',
-            'Leading': 'sum',
+        'TeamRun': ['sum', 'count'],
+        'LeadChange': 'sum',
+        'LeadChangeFor': 'sum',
+        'LeadChangeAgainst': 'sum',
+        'Leading': 'sum',
     })
     non_clutch_data.columns = ['_NonClutch'.join(col).strip() for col in non_clutch_data.columns.values]
-    non_clutch_data = non_clutch_data.rename(index=str, columns={'Season_NonClutch': 'Season', 'TeamID_NonClutch': 'TeamID'})
+    non_clutch_data = non_clutch_data.rename(index=str,
+                                             columns={'Season_NonClutch': 'Season', 'TeamID_NonClutch': 'TeamID'})
     print(non_clutch_data)
 
     merged = pd.merge(clutch_data, non_clutch_data, how='outer', on=['Season', 'TeamID']).fillna(0)
-    print(merged)
-    merged.to_csv('runs_analysis.csv', sep=',', encoding='utf-8', index=False)
+
+    final = merged.rename(
+        index=str,
+        columns={
+            'TeamRun_Clutchsum': 'ClutchPositiveRuns', 'TeamRun_Clutchcount': 'ClutchRuns',
+            'LeadChange_Clutchsum': 'ClutchLeadChanges', 'LeadChangeFor_Clutchsum': 'ClutchPositiveLeadChanges',
+            'LeadChangeAgainst_Clutchsum': 'ClutchNegativeLeadChanges', 'Leading_Clutchsum': 'ClutchLeads',
+            'TeamRun_NonClutchsum': 'NonClutchPositiveRuns', 'TeamRun_NonClutchcount': 'NonClutchRuns',
+            'LeadChange_NonClutchsum': 'NonClutchNegativeLeadChanges',
+            'LeadChangeFor_NonClutchsum': 'NonClutchPositiveLeadChanges',
+            'LeadChangeAgainst_NonClutchsum': 'NonClutchNegativeLeadChanges', 'Leading_NonClutchsum': 'NonClutchLeads'
+        }
+    )
+
+    print(final)
+    final.to_csv('runs_analysis.csv', sep=',', encoding='utf-8', index=False)
 
 
 if __name__ == '__main__':
     # calculate_runs()
-    read_runs_as_df()
+    calculate_clutch_wins()
+    # read_runs_as_df()
