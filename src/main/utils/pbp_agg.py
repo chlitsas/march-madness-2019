@@ -99,7 +99,7 @@ def calculate_clutch_wins():
         print('clutch wins calculator is starting for season ' + str(year))
         last_stored_game = ''
         for row in final_data:
-            game_id = row['Season']+row['DayNum']+row['WTeamID']+row['LTeamID']
+            game_id = row['Season'] + row['DayNum'] + row['WTeamID'] + row['LTeamID']
 
             if last_stored_game != game_id:
                 result.append([int(row['Season']), int(row['WTeamID']), 0, 0, 1, 0])
@@ -108,10 +108,10 @@ def calculate_clutch_wins():
 
             if int(row['ElapsedSeconds']) > 2000 and abs(int(row['WPoints']) - int(row['LPoints'])) < 7:
                 idx = len(result)
-                result[idx-2][2] = 1
-                result[idx-2][4] = 0
-                result[idx-1][3] = 1
-                result[idx-1][5] = 0
+                result[idx - 2][2] = 1
+                result[idx - 2][4] = 0
+                result[idx - 1][3] = 1
+                result[idx - 1][5] = 0
 
     with open('clutch_wins.csv', 'w', newline='\n') as csv_file:
         wr = csv.writer(csv_file, delimiter=',')
@@ -119,7 +119,7 @@ def calculate_clutch_wins():
 
 
 def read_runs_as_df():
-    df = pd.read_csv('./runs.csv')
+    df = pd.read_csv('./runs_v2.csv')
     print(df.head(10))
     df['LeadChangeFor'] = df.apply(lambda row: True if row['TeamRun'] and not row['LeadChange'] else False, axis=1)
     df['LeadChangeAgainst'] = df.apply(lambda row: True if not row['TeamRun'] and row['LeadChange'] else False, axis=1)
@@ -159,7 +159,7 @@ def read_runs_as_df():
             'LeadChange_Clutchsum': 'ClutchLeadChanges', 'LeadChangeFor_Clutchsum': 'ClutchPositiveLeadChanges',
             'LeadChangeAgainst_Clutchsum': 'ClutchNegativeLeadChanges', 'Leading_Clutchsum': 'ClutchLeads',
             'TeamRun_NonClutchsum': 'NonClutchPositiveRuns', 'TeamRun_NonClutchcount': 'NonClutchRuns',
-            'LeadChange_NonClutchsum': 'NonClutchNegativeLeadChanges',
+            'LeadChange_NonClutchsum': 'NonClutchLeadChanges',
             'LeadChangeFor_NonClutchsum': 'NonClutchPositiveLeadChanges',
             'LeadChangeAgainst_NonClutchsum': 'NonClutchNegativeLeadChanges', 'Leading_NonClutchsum': 'NonClutchLeads'
         }
@@ -169,7 +169,120 @@ def read_runs_as_df():
     final.to_csv('runs_analysis.csv', sep=',', encoding='utf-8', index=False)
 
 
+def read_clutch_wins_as_df():
+    tourney_csv_file = pkgutil.get_data("data.DataFiles", "NCAATourneyCompactResults.csv")
+    tourney_csv = pd.read_csv(io.StringIO(tourney_csv_file.decode('utf-8')))
+
+    df = pd.read_csv('./clutch_wins.csv')
+    print(df.head(10))
+    data = df \
+        .groupby(['Season', 'TeamID'], as_index=False) \
+        .agg({
+        'ClutchWin': 'sum',
+        'ClutchLoose': 'sum',
+        'EasyWin': 'sum',
+        'EasyLoose': 'sum',
+    })
+    w_data = data.copy().rename(
+        index=str,
+        columns={'TeamID': 'WTeamID', 'ClutchWin': 'WClutchWin',
+                 'ClutchLoose': 'WClutchLoose', 'EasyWin': 'WEasyWin', 'EasyLoose': 'WEasyLoose'})
+    l_data = data.copy().rename(
+        index=str,
+        columns={'TeamID': 'LTeamID', 'ClutchWin': 'LClutchWin',
+                 'ClutchLoose': 'LClutchLoose', 'EasyWin': 'LEasyWin', 'EasyLoose': 'LEasyLoose'})
+
+    w_final = pd.merge(
+        w_data,
+        tourney_csv,
+        how='inner', on=['Season', 'WTeamID']
+    )
+
+    l_final = pd.merge(
+        l_data,
+        tourney_csv,
+        how='inner', on=['Season', 'LTeamID']
+    )
+
+    final = pd.merge(
+        w_final,
+        l_final,
+        how='inner', on=['Season', 'WTeamID', 'LTeamID']
+    )
+    print(final)
+    final.to_csv('clutch_wins_analysis.csv', sep=',', encoding='utf-8', index=False)
+
+
+def read_runs_analysis_as_df():
+    tourney_csv_file = pkgutil.get_data("data.DataFiles", "NCAATourneyCompactResults.csv")
+    tourney_csv = pd.read_csv(io.StringIO(tourney_csv_file.decode('utf-8')))
+
+    df = pd.read_csv('./runs_analysis.csv')
+    print(df.head(10))
+    data = df \
+        .groupby(['Season', 'TeamID'], as_index=False) \
+        .agg({
+            'ClutchPositiveRuns': 'sum',
+            'ClutchRuns': 'sum',
+            'ClutchLeadChanges': 'sum',
+            'ClutchPositiveLeadChanges': 'sum',
+            'ClutchNegativeLeadChanges': 'sum',
+            'ClutchLeads': 'sum',
+            'NonClutchPositiveRuns': 'sum',
+            'NonClutchRuns': 'sum',
+            'NonClutchLeadChanges': 'sum',
+            'NonClutchPositiveLeadChanges': 'sum',
+            'NonClutchNegativeLeadChanges': 'sum',
+            'NonClutchLeads': 'sum'
+    })
+
+    w_data = data.copy().rename(
+        index=str,
+        columns={'TeamID': 'WTeamID', 'ClutchPositiveRuns': 'WClutchPositiveRuns',
+                 'ClutchRuns': 'WClutchRuns', 'ClutchLeadChanges': 'WClutchLeadChanges',
+                 'ClutchPositiveLeadChanges': 'WClutchPositiveLeadChanges',
+                 'ClutchNegativeLeadChanges': 'WClutchNegativeLeadChanges',
+                 'ClutchLeads': 'WClutchLeads', 'NonClutchPositiveRuns': 'WNonClutchPositiveRuns',
+                 'NonClutchRuns': 'WNonClutchRuns', 'NonClutchLeadChanges': 'WNonClutchLeadChanges',
+                 'NonClutchPositiveLeadChanges': 'WNonClutchPositiveLeadChanges',
+                 'NonClutchNegativeLeadChanges': 'WNonClutchNegativeLeadChanges',
+                 'NonClutchLeads': 'WNonClutchLeads'})
+    l_data = data.copy().rename(
+        index=str,
+        columns={'TeamID': 'LTeamID', 'ClutchPositiveRuns': 'LClutchPositiveRuns',
+                 'ClutchRuns': 'LClutchRuns', 'ClutchLeadChanges': 'LClutchLeadChanges',
+                 'ClutchPositiveLeadChanges': 'LClutchPositiveLeadChanges',
+                 'ClutchNegativeLeadChanges': 'LClutchNegativeLeadChanges',
+                 'ClutchLeads': 'LClutchLeads', 'NonClutchPositiveRuns': 'LNonClutchPositiveRuns',
+                 'NonClutchRuns': 'LNonClutchRuns', 'NonClutchLeadChanges': 'LNonClutchLeadChanges',
+                 'NonClutchPositiveLeadChanges': 'LNonClutchPositiveLeadChanges',
+                 'NonClutchNegativeLeadChanges': 'LNonClutchNegativeLeadChanges',
+                 'NonClutchLeads': 'LNonClutchLeads'})
+
+    w_final = pd.merge(
+        w_data,
+        tourney_csv,
+        how='right', on=['Season', 'WTeamID']
+    )
+
+    l_final = pd.merge(
+        l_data,
+        tourney_csv,
+        how='right', on=['Season', 'LTeamID']
+    )
+
+    final = pd.merge(
+        w_final,
+        l_final,
+        how='inner', on=['Season', 'WTeamID', 'LTeamID']
+    ).fillna(0)
+    print(final)
+    final.to_csv('clutch_runs_analysis.csv', sep=',', encoding='utf-8', index=False)
+
+
 if __name__ == '__main__':
     # calculate_runs()
-    calculate_clutch_wins()
+    # calculate_clutch_wins()
     # read_runs_as_df()
+    read_runs_analysis_as_df()
+    # read_clutch_wins_as_df()

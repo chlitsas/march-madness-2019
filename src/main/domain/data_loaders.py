@@ -2,12 +2,13 @@ import csv
 import io
 import pkgutil
 
-from src.main.domain.GamePrediction import create_valid_game
-from src.main.domain.PlayByPlayEvent import PlayByPlayEvent
+import pandas as pd
+
 from src.main.domain.CompactResult import CompactResult
 from src.main.domain.DetailedResult import DetailedResult
+from src.main.domain.GamePrediction import create_valid_game
+from src.main.domain.PlayByPlayEvent import PlayByPlayEvent
 from src.main.domain.TourneySeed import TourneySeed
-import pandas as pd
 
 
 def load_pbp():
@@ -128,6 +129,12 @@ def load_detailed_box(regular_season=False):
             )
         )
     return result
+
+
+def clutch_wins_df():
+    clutch_wins_csv_file = pkgutil.get_data("data.Calculated", "clutch_wins.csv")
+
+    return pd.read_csv(io.StringIO(clutch_wins_csv_file.decode('utf-8')))
 
 
 def detailed_stats_with_seeds_df():

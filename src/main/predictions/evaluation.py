@@ -1,4 +1,5 @@
 from math import log
+
 from src.main.domain.CompactResult import CompactResult
 from src.main.domain.GamePrediction import GamePrediction
 from src.main.predictions.predictors import AbstractPredictor
@@ -54,5 +55,6 @@ class PredictorEvaluationTemplate:
                 compact_results=compact_results,
                 game_predictions=self.predictor.get_predictions(season=season, games=games)
             )
+            print([self.predictor_description, season, evaluation, len(games)])
             result.append([self.predictor_description, season, evaluation, len(games)])
         return result

@@ -1,6 +1,8 @@
 import numpy as np
-from keras.layers import Dense
+from keras import optimizers
+from keras.layers import Dense, Dropout
 from keras.models import Sequential
+from sklearn.preprocessing import MinMaxScaler
 
 from src.main.domain.GamePrediction import Game, GamePrediction
 from src.main.domain.data_loaders import load_tourney_compact_results, \
@@ -18,50 +20,80 @@ class KerasDeepNeural:
         # fix random seed for reproducibility
         seed = 7
         np.random.seed(seed)
-
+        self.scaler = MinMaxScaler(feature_range=(0, 1))
         X = np.array(x_data)
+        X = self.scaler.fit_transform(X)
         Y = np.array(y_data)
         # create model
-        self.model.add(Dense(3, input_dim=4, kernel_initializer='uniform', activation='sigmoid'))
-        # self.model.add(Dense(12, kernel_initializer='uniform', activation='relu'))
-        # self.model.add(Dense(2, kernel_initializer='uniform', activation='relu'))
-        self.model.add(Dense(1, kernel_initializer='uniform', activation='relu'))
+        self.model.add(Dense(8, input_dim=56, kernel_initializer='uniform', activation='sigmoid'))
+        self.model.add(Dropout(0.5))
+        #self.model.add(Dense(8, kernel_initializer='uniform', activation='relu'))
+        #self.model.add(Dropout(0.5))
+        #self.model.add(Dense(2, kernel_initializer='uniform', activation='relu'))
+        self.model.add(Dense(1, kernel_initializer='uniform', activation='sigmoid'))
         # Compile model
-        self.model.compile(loss='binary_crossentropy', optimizer='Adadelta', metrics=['accuracy'])
+        Adadelta = optimizers.Adadelta(lr=0.8, rho=0.95, epsilon=None, decay=0.9)
+        self.model.compile(loss='binary_crossentropy', optimizer=optimizers.RMSprop(lr=1e-4), metrics=['accuracy'])
         # Fit the model
-        self.model.fit(X, Y, epochs=2000, batch_size=10, verbose=2)
+        self.model.fit(X, Y, epochs=9000, batch_size=10, verbose=2)
 
     def predict_proba(self, x_data):
         # calculate predictions
+        x_data = self.scaler.transform(x_data)
         return self.model.predict(np.array(x_data))
 
 
-class DetailedStatsSeedsPredictor(AbstractPredictor):
+def percentise_diff(x, y, perfect_diff):
+    diff = x - y
+    if diff >= perfect_diff:
+        return 1
+    if diff <= -perfect_diff:
+        return 1
+    return diff / perfect_diff
+
+
+class ExtendedStatsSeedsPredictor(AbstractPredictor):
     def __init__(self, load_stats_df_function, clutch_wins_df_function, load_tourney_compact_results_function) -> None:
         super().__init__()
         self.load_tourney_compact_results_function = load_tourney_compact_results_function
         self.clf = KerasDeepNeural()
 
-        # self.clf = RandomForestClassifier(
-        #    n_estimators=500,
-        #    max_depth=5,
-        #    n_jobs=4
-        # )
-
         self.features = load_stats_df_function() \
             .groupby(['Season', 'T1TeamID'], as_index=False) \
             .agg({'T1Seed': 'min',
-                  'T1Score': 'mean',
+                  'T1SeedBeat': 'min',
                   'XScore': 'mean',
-                  'T1SeedBeat': 'min'})
+                  'XFGM': 'mean',
+                  'XAst': 'mean',
+                  'XStl': 'mean',
+                  'XTO': 'mean',
+                  'XFGM3': 'mean',
+                  'XFTM': 'mean',
+                  'XDR': 'mean',
+                  'XOR': 'mean',
+                  'XPoss': 'mean',
+                  'XPF': 'mean',
+
+                  'T1Score': 'mean',
+                  'T1FGM': 'mean',
+                  'T1Ast': 'mean',
+                  'T1Stl': 'mean',
+                  'T1TO': 'mean',
+                  'T1FGM3': 'mean',
+                  'T1FTM': 'mean',
+                  'T1DR': 'mean',
+                  'T1OR': 'mean',
+                  'T1Poss': 'mean',
+                  'T1PF': 'mean'
+                  })
 
         self.features_wins = clutch_wins_df_function() \
             .groupby(['Season', 'TeamID'], as_index=False) \
             .agg({
-                'ClutchWin': 'sum',
-                'ClutchLoose': 'sum',
-                'EasyWin': 'sum',
-                'EasyLoose': 'sum'
+            'ClutchWin': 'sum',
+            'ClutchLoose': 'sum',
+            'EasyWin': 'sum',
+            'EasyLoose': 'sum'
         })
 
     def get_feature_vector(self, season, team1_id, team2_id):
@@ -93,19 +125,32 @@ class DetailedStatsSeedsPredictor(AbstractPredictor):
             team2_wins = d.tolist()[2:]
             break
 
-        team1_w = 4*team1_wins[2]+team1_wins[0]
-        team2_w = 4*team2_wins[2]+team2_wins[0]
-
-        seed_idx = (team2[0] - team1[0]) / 15
-        team1_pts_idx = (team1[1] + team2[2]) / 2
-        team2_pts_idx = (team2[1] + team1[2]) / 2
-        pts_idx = 1 if team1_pts_idx - team2_pts_idx > 20 else -1 if team2_pts_idx - team1_pts_idx > 20 \
-            else (team1_pts_idx - team2_pts_idx) / 20
-        seed_beat_idx = (team2[3] - team1[3]) / 15
-        return [seed_idx, pts_idx, seed_beat_idx, (team1_w-team2_w)/90]
+        stats = [
+            percentise_diff(team2[0], team1[0], 15),
+            percentise_diff(team2[0], team1[0], 15),
+            #percentise_diff(team1[1], team2[1], 20),
+            percentise_diff(team1[2], team2[2], 10),
+            #percentise_diff(team1[3], team2[3], 6),
+            percentise_diff(team1[4], team2[4], 5),
+            percentise_diff(team1[5], team2[5], 6),
+            percentise_diff(team1[6], team2[6], 6),
+            #percentise_diff(team1[7], team2[7], 7),
+            percentise_diff(team1[8], team2[8], 10),
+            percentise_diff(team1[9], team2[9], 6),
+            #percentise_diff(team1[10], team2[10], 10),
+            #percentise_diff(team2[11], team1[11], 5),
+            percentise_diff(team2[12], team1[11], 5)
+        ]
+        wins = [
+            percentise_diff(team1_wins[0], team2_wins[0], 4),
+            percentise_diff(team2_wins[1], team1_wins[1], 4),
+            percentise_diff(team1_wins[2], team2_wins[2], 5),
+            percentise_diff(team2_wins[3], team1_wins[3], 5)
+        ]
+        return team1+team2+team1_wins+team2_wins
 
     def train(self, seasons: [int]):
-        self.clf = KerasDeepNeural()
+        # self.clf = KerasDeepNeural()
         train_data = []
         train_results = []
         for season in seasons:
@@ -133,15 +178,15 @@ class DetailedStatsSeedsPredictor(AbstractPredictor):
 
             prob = bound_probability(self.clf.predict_proba(features)[0][0])
             game_predictions.append(GamePrediction(game, prob))
-            print(str(features) + ' -- ' + str(prob))
+            # print(str(features) + ' -- ' + str(prob))
         print('predictions done for season ' + str(season))
         return game_predictions
 
 
-class DetailedStatsSeedsEvaluator(PredictorEvaluationTemplate):
+class ExtendedStatsSeedsEvaluator(PredictorEvaluationTemplate):
     def __init__(self) -> None:
         super().__init__()
-        self.predictor = DetailedStatsSeedsPredictor(detailed_stats_with_seeds_df, clutch_wins_df,
+        self.predictor = ExtendedStatsSeedsPredictor(detailed_stats_with_seeds_df, clutch_wins_df,
                                                      load_tourney_compact_results)
         self.active_seasons = range(2012, 2019)  # set([x.season for x in load_detailed_box()])
-        self.predictor_description = 'detailed_stats_seeds'
+        self.predictor_description = 'extended_stats'
