@@ -282,7 +282,6 @@ def read_runs_analysis_as_df():
 
 
 def create_wins_looses_string():
-    result = []
     reg_season_csv_file = pkgutil.get_data("data.DataFiles", "RegularSeasonCompactResults.csv")
     data = csv.DictReader(io.StringIO(reg_season_csv_file.decode('utf-8')))
     data_map = {}
@@ -295,7 +294,7 @@ def create_wins_looses_string():
         looser = data_map.get(looser_id)
         if looser is None:
             looser = ''
-        elif x['WLoc'] == 'A':
+        if x['WLoc'] == 'A':
             winner += 'W'
             looser += 'L'
         else:

@@ -14,11 +14,11 @@ class CatBoost:
         super().__init__()
         self.model = CatBoostClassifier(
             iterations=2000,
-            learning_rate=0.005,
+            learning_rate=0.004,
             depth=3,
             loss_function='Logloss',
             l2_leaf_reg=3,
-            leaf_estimation_iterations=100,
+            leaf_estimation_iterations=50,
             thread_count=6
         )
 
@@ -28,7 +28,7 @@ class CatBoost:
         #X = self.scaler.fit_transform(X)
         Y = np.array(y_data)
         # create model
-        pool = Pool(X, Y, [0, 1])
+        pool = Pool(X, Y, [])
 
         print('Starting training...')
         self.model.fit(pool)
@@ -77,15 +77,15 @@ class ExtendedStatsCatBoostPredictor(AbstractPredictor):
                   'T1SeedBeat': 'min',  # 1
                   'XScore': 'mean',  # 2
                   'XFGM': 'mean',  # 3
-                  'XAst': 'mean',  # 4
-                  'XStl': 'mean',  # 5
-                  'XTO': 'mean',  # 6
-                  'XFGM3': 'mean',  # 7
-                  'XFTM': 'mean',  # 8
-                  'XDR': 'mean',  # 9
-                  'XOR': 'mean',  # 10
-                  'XPoss': 'mean',  # 11
-                  'XPF': 'mean',  # 12
+                  'XAst': 'mean',  # 4 / alone gives random predictions
+                  'XStl': 'mean',  # 5 / random results
+                  'XTO': 'mean',  # 6 / random results
+                  'XFGM3': 'mean',  # 7 / random
+                  'XFTM': 'mean',  # 8 / random
+                  'XDR': 'mean',  # 9 / bad
+                  'XOR': 'mean',  # 10 / random
+                  'XPoss': 'mean',  # 11 / random
+                  'XPF': 'mean',  # 12 / random
 
                   'T1Score': 'mean',  # 13
                   'T1FGM': 'mean',  # 14
@@ -98,7 +98,19 @@ class ExtendedStatsCatBoostPredictor(AbstractPredictor):
                   'T1OR': 'mean',  # 21
                   'T1Poss': 'mean',  # 22
                   'T1PF': 'mean',  # 23
-                  'T1Region': 'first'  # 24
+                  'T1Region': 'first',  # 24
+
+                  'T2Score': 'mean',  # 25
+                  'T2FGM': 'mean',  # 26
+                  'T2Ast': 'mean',  # 27
+                  'T2Stl': 'mean',  # 28
+                  'T2TO': 'mean',  # 29
+                  'T2FGM3': 'mean',  # 30
+                  'T2FTM': 'mean',  # 31
+                  'T2DR': 'mean',  # 32
+                  'T2OR': 'mean',  # 33
+                  'T2Poss': 'mean',  # 34
+                  'T2PF': 'mean'  # 35
                   })
 
         self.features_wins = clutch_wins_df_function() \
@@ -112,7 +124,7 @@ class ExtendedStatsCatBoostPredictor(AbstractPredictor):
 
     def win_streak(self, season_id, team_id, limit):
         data = self.results_sequence[str(season_id)+'-'+str(team_id)][-limit:]
-        return (data.count('w')+data.count('W'))/len(data)
+        return 100*(data.count('w')+data.count('W'))/len(data)
 
     def get_feature_vector(self, season, team1_id, team2_id):
         team1 = None
@@ -145,13 +157,13 @@ class ExtendedStatsCatBoostPredictor(AbstractPredictor):
 
         stats = [
             team1[0],
-            team2[0],
             team1[1],
-            team2[1],
             team1[2],
+            team2[0],
+            team2[1],
             team2[2],
-            #self.win_streak(season, team1_id, 4),
-            #self.win_streak(season, team2_id, 4)
+            #self.win_streak(season, team1_id, 44),
+            #self.win_streak(season, team2_id, 44)
             #percentise_diff(team2[12], team1[11], 5)
         ]
         #wins = [
