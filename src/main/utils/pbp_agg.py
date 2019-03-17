@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import pkgutil
 
 import pandas as pd
@@ -280,9 +281,37 @@ def read_runs_analysis_as_df():
     final.to_csv('clutch_runs_analysis.csv', sep=',', encoding='utf-8', index=False)
 
 
+def create_wins_looses_string():
+    result = []
+    reg_season_csv_file = pkgutil.get_data("data.DataFiles", "RegularSeasonCompactResults.csv")
+    data = csv.DictReader(io.StringIO(reg_season_csv_file.decode('utf-8')))
+    data_map = {}
+    for x in data:
+        winner_id = x['Season']+'-'+x['WTeamID']
+        looser_id = x['Season']+'-'+x['LTeamID']
+        winner = data_map.get(winner_id)
+        if winner is None:
+            winner = ''
+        looser = data_map.get(looser_id)
+        if looser is None:
+            looser = ''
+        elif x['WLoc'] == 'A':
+            winner += 'W'
+            looser += 'L'
+        else:
+            winner += 'w'
+            looser += 'l'
+        data_map[winner_id] = winner
+        data_map[looser_id] = looser
+
+    with open('results_sequence.json', 'w') as fp:
+        json.dump(data_map, fp)
+
+
 if __name__ == '__main__':
     # calculate_runs()
     # calculate_clutch_wins()
     # read_runs_as_df()
-    read_runs_analysis_as_df()
+    # read_runs_analysis_as_df()
     # read_clutch_wins_as_df()
+    create_wins_looses_string()

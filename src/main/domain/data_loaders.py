@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 import pkgutil
 
 import pandas as pd
@@ -135,6 +136,11 @@ def clutch_wins_df():
     clutch_wins_csv_file = pkgutil.get_data("data.Calculated", "clutch_wins.csv")
 
     return pd.read_csv(io.StringIO(clutch_wins_csv_file.decode('utf-8')))
+
+
+def results_sequence_map():
+    results_sequence_file = pkgutil.get_data("data.Calculated", "results_sequence.json")
+    return json.loads(results_sequence_file.decode())
 
 
 def detailed_stats_with_seeds_df():
