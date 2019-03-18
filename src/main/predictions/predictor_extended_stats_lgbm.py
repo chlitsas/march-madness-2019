@@ -33,12 +33,16 @@ class LightGBM:
             'boosting_type': 'gbdt',
             'objective': 'regression',
             'metric': 'binary_logloss',
-            'num_leaves': 3,
-            'learning_rate': 0.005,
-            'feature_fraction': 0.001,
-            'bagging_fraction': 0.5,
+            'num_leaves': 31,
+            'learning_rate': 0.001,
+            'feature_fraction': 0.09,
+            'bagging_fraction': 0.08,
             'bagging_freq': 15,
-            'verbose': 1
+            'verbose': 1,
+            'max_depth': 3,
+            'max_bin': 300,
+            'n_estimators': 30000,
+            'num_iterations': 10000
         }
 
         print('Starting training...')
@@ -161,13 +165,11 @@ class ExtendedStatsLGBMPredictor(AbstractPredictor):
 
         stats = [
             team1[0],
-            team1[1],
-            team1[2],
             team2[0],
+            team1[1],
             team2[1],
-            team2[2],
-            self.win_streak(season, team1_id, 3),
-            self.win_streak(season, team2_id, 3)
+            team1[2],
+            team2[2]
             #percentise_diff(team2[12], team1[11], 5)
         ]
         #wins = [

@@ -5,6 +5,8 @@ import pkgutil
 
 import pandas as pd
 
+from src.main.domain.data_loaders import load_massey_ordinals_df
+
 
 def can_not_be_run(starting_moment, current_moment):
     if starting_moment is None or current_moment is None:
@@ -313,4 +315,15 @@ if __name__ == '__main__':
     # read_runs_as_df()
     # read_runs_analysis_as_df()
     # read_clutch_wins_as_df()
-    create_wins_looses_string()
+    # create_wins_looses_string()
+    df = load_massey_ordinals_df()
+
+    data = df[(df.Season == 2003) & (df.RankingDayNum == 35) & (df.SystemName == 'SEL')]
+    print(data[data.TeamID == 1102].OrdinalRank.iloc[0])
+    print(data.TeamID.max())
+
+    final_set = set(df[df.RankingDayNum == 133].SystemName.unique())
+    for season in range(2003, 2019):
+        print(len(df[(df.Season == season) & (df.RankingDayNum >= 133)].SystemName.unique()))
+        final_set = set(final_set) & set(df[(df.Season == season) & (df.RankingDayNum == 133)].SystemName.unique())
+    print(final_set)

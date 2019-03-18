@@ -47,6 +47,12 @@ def load_tourney_seeds():
     return result
 
 
+def load_massey_ordinals_df():
+    csv_file = pkgutil.get_data("data", "MasseyOrdinals.csv")
+
+    return pd.read_csv(io.StringIO(csv_file.decode('utf-8')))
+
+
 def load_compact_results(regular_season=False):
     if regular_season:
         csv_file = pkgutil.get_data("data.DataFiles", "RegularSeasonCompactResults.csv")

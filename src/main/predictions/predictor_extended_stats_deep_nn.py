@@ -1,41 +1,45 @@
 import numpy as np
-from catboost import CatBoostClassifier
-from catboost import Pool
+from keras import Sequential, optimizers
+from keras.layers import Dense
+from sklearn.preprocessing import MinMaxScaler
 
 from src.main.domain.GamePrediction import Game, GamePrediction
 from src.main.domain.data_loaders import load_tourney_compact_results, \
-    detailed_stats_with_seeds_df, results_sequence_map, load_massey_ordinals_df
+    detailed_stats_with_seeds_df, clutch_wins_df, results_sequence_map
 from src.main.predictions.evaluation import PredictorEvaluationTemplate
 from src.main.predictions.predictors import AbstractPredictor, bound_probability
 
 
-class CatBoost:
+class KerasDeepNeural:
     def __init__(self) -> None:
         super().__init__()
-        self.model = CatBoostClassifier(
-            iterations=2000,
-            learning_rate=0.004,
-            depth=3,
-            loss_function='Logloss',
-            l2_leaf_reg=3,
-            leaf_estimation_iterations=50,
-            thread_count=6
-        )
+        self.model = Sequential()
 
     def fit(self, x_data, y_data):
-        #self.scaler = MinMaxScaler(feature_range=(0, 1))
+        # fix random seed for reproducibility
+        seed = 7
+        np.random.seed(seed)
+        self.scaler = MinMaxScaler(feature_range=(0, 1))
         X = np.array(x_data)
-        #X = self.scaler.fit_transform(X)
+        X = self.scaler.fit_transform(X)
         Y = np.array(y_data)
         # create model
-        pool = Pool(X, Y, [])
-
-        print('Starting training...')
-        self.model.fit(pool)
+        self.model.add(Dense(2, input_dim=6, kernel_initializer='uniform', activation='sigmoid'))
+        #self.model.add(Dropout(0.5))
+        #self.model.add(Dense(8, kernel_initializer='uniform', activation='relu'))
+        #self.model.add(Dropout(0.5))
+        #self.model.add(Dense(2, kernel_initializer='uniform', activation='relu'))
+        self.model.add(Dense(1, kernel_initializer='uniform', activation='sigmoid'))
+        # Compile model
+        Adadelta = optimizers.Adadelta(lr=0.8, rho=0.95, epsilon=None, decay=0.9)
+        self.model.compile(loss='binary_crossentropy', optimizer=optimizers.RMSprop(lr=1e-4), metrics=['accuracy'])
+        # Fit the model
+        self.model.fit(X, Y, epochs=10000, batch_size=40, verbose=2)
 
     def predict_proba(self, x_data):
-        #x_data = self.scaler.transform(x_data)
-        return self.model.predict_proba(x_data)[0][1]
+        # calculate predictions
+        x_data = self.scaler.transform(x_data)
+        return self.model.predict(np.array(x_data))
 
 
 def percentise_diff(x, y, perfect_diff):
@@ -62,14 +66,11 @@ def region_one_hot(region, seed):
     return result
 
 
-class ExtendedStatsCatBoostPredictor(AbstractPredictor):
-    def __init__(self, load_stats_df_function, load_tourney_compact_results_function) -> None:
+class ExtendedStatsDeepNNPredictor(AbstractPredictor):
+    def __init__(self, load_stats_df_function, clutch_wins_df_function, load_tourney_compact_results_function) -> None:
         super().__init__()
         self.load_tourney_compact_results_function = load_tourney_compact_results_function
-        self.clf = CatBoost()
-
-        self.results_sequence = results_sequence_map()
-        self.massey_df = load_massey_ordinals_df()
+        self.clf = KerasDeepNeural()
 
         self.features = load_stats_df_function() \
             .groupby(['Season', 'T1TeamID'], as_index=False) \
@@ -77,15 +78,15 @@ class ExtendedStatsCatBoostPredictor(AbstractPredictor):
                   'T1SeedBeat': 'min',  # 1
                   'XScore': 'mean',  # 2
                   'XFGM': 'mean',  # 3
-                  'XAst': 'mean',  # 4 / alone gives random predictions
-                  'XStl': 'mean',  # 5 / random results
-                  'XTO': 'mean',  # 6 / random results
-                  'XFGM3': 'mean',  # 7 / random
-                  'XFTM': 'mean',  # 8 / random
-                  'XDR': 'mean',  # 9 / bad
-                  'XOR': 'mean',  # 10 / random
-                  'XPoss': 'mean',  # 11 / random
-                  'XPF': 'mean',  # 12 / random
+                  'XAst': 'mean',  # 4
+                  'XStl': 'mean',  # 5
+                  'XTO': 'mean',  # 6
+                  'XFGM3': 'mean',  # 7
+                  'XFTM': 'mean',  # 8
+                  'XDR': 'mean',  # 9
+                  'XOR': 'mean',  # 10
+                  'XPoss': 'mean',  # 11
+                  'XPF': 'mean',  # 12
 
                   'T1Score': 'mean',  # 13
                   'T1FGM': 'mean',  # 14
@@ -98,44 +99,28 @@ class ExtendedStatsCatBoostPredictor(AbstractPredictor):
                   'T1OR': 'mean',  # 21
                   'T1Poss': 'mean',  # 22
                   'T1PF': 'mean',  # 23
-                  'T1Region': 'first',  # 24
-
-                  'T2Score': 'mean',  # 25
-                  'T2FGM': 'mean',  # 26
-                  'T2Ast': 'mean',  # 27
-                  'T2Stl': 'mean',  # 28
-                  'T2TO': 'mean',  # 29
-                  'T2FGM3': 'mean',  # 30
-                  'T2FTM': 'mean',  # 31
-                  'T2DR': 'mean',  # 32
-                  'T2OR': 'mean',  # 33
-                  'T2Poss': 'mean',  # 34
-                  'T2PF': 'mean'  # 35
+                  'T1Region': 'first'  # 24
                   })
+
+        self.features_wins = clutch_wins_df_function() \
+            .groupby(['Season', 'TeamID'], as_index=False) \
+            .agg({
+            'ClutchWin': 'sum',
+            'ClutchLoose': 'sum',
+            'EasyWin': 'sum',
+            'EasyLoose': 'sum'
+        })
+        self.results_sequence = results_sequence_map()
 
     def win_streak(self, season_id, team_id, limit):
         data = self.results_sequence[str(season_id)+'-'+str(team_id)][-limit:]
-        return 100*(data.count('W'))/len(data)
-
-    def wins_percentage(self, season_id, team_id):
-        data = self.results_sequence[str(season_id)+'-'+str(team_id)]
-        return (data.count('W')+data.count('w'))/len(data)
+        return (data.count('w')+data.count('W'))/len(data)
 
     def get_feature_vector(self, season, team1_id, team2_id):
-        diff = 353 # self.data.OrdinalRank.max()-self.data.OrdinalRank.min()
-        team_a_min = self.data[self.data.TeamID == team1_id].OrdinalRank.min()
-        team_b_min = self.data[self.data.TeamID == team2_id].OrdinalRank.min()
-        team_a_max = self.data[self.data.TeamID == team1_id].OrdinalRank.max()
-        team_b_max = self.data[self.data.TeamID == team2_id].OrdinalRank.max()
-
-        team_a_advantage = 0
-        if team_a_max < team_b_min:
-            team_a_advantage = -1
-        if team_b_max < team_a_min:
-            team_a_advantage = 1
-
         team1 = None
         team2 = None
+        team1_wins = None
+        team2_wins = None
         for row in self.features[
             (self.features['T1TeamID'] == team1_id) & (self.features['Season'] == season)].iterrows():
             index, d = row
@@ -148,11 +133,17 @@ class ExtendedStatsCatBoostPredictor(AbstractPredictor):
             team2 = d.tolist()[2:]
             break
 
-        power = 13.91
-        team_a_prob = (team1[13]**power) / (team1[13]**power + team1[25]**power)
-        team_b_prob = (team2[13]**power) / (team2[13]**power + team2[25]**power)
+        for row in self.features_wins[
+            (self.features_wins['TeamID'] == team1_id) & (self.features_wins['Season'] == season)].iterrows():
+            index, d = row
+            team1_wins = d.tolist()[2:]
+            break
 
-        team1_win = team_a_prob/(team_a_prob + team_b_prob)
+        for row in self.features_wins[
+            (self.features_wins['TeamID'] == team2_id) & (self.features_wins['Season'] == season)].iterrows():
+            index, d = row
+            team2_wins = d.tolist()[2:]
+            break
 
         stats = [
             team1[0],
@@ -160,23 +151,23 @@ class ExtendedStatsCatBoostPredictor(AbstractPredictor):
             team1[1],
             team2[1],
             team1[2],
-            team2[2],
-            team1_win,
-            team_a_advantage,
-            #self.wins_percentage(season, team1_id)/(self.wins_percentage(season, team1_id)+self.wins_percentage(season, team2_id))
+            team2[2]
             #percentise_diff(team2[12], team1[11], 5)
         ]
+        #wins = [
+        #    percentise_diff(team1_wins[0], team2_wins[0], 4),
+        #    percentise_diff(team2_wins[1], team1_wins[1], 4),
+        #    percentise_diff(team1_wins[2], team2_wins[2], 5),
+        #    percentise_diff(team2_wins[3], team1_wins[3], 5)
+        #]
+
         return stats
 
     def train(self, seasons: [int]):
-        self.clf = CatBoost()
+        self.clf = KerasDeepNeural()
         train_data = []
         train_results = []
         for season in seasons:
-            # {'AP', 'WOL', 'RTH', 'WLK', 'DOL', 'MOR', 'USA', 'SAG', 'RPI', 'POM', 'COL'}
-            self.data = self.massey_df[
-                (self.massey_df.Season == season)
-            ]
             for result in self.load_tourney_compact_results_function(season):
                 if result.w_team_id < result.l_team_id:
                     train_data.append(self.get_feature_vector(season, result.w_team_id, result.l_team_id))
@@ -186,6 +177,8 @@ class ExtendedStatsCatBoostPredictor(AbstractPredictor):
                     train_results.append(0)
 
         print('training')
+        # self.scaler.fit(train_data)
+        # train_data = self.scaler.transform(train_data)
         self.clf.fit(train_data, train_results)
         print('training is done')
 
@@ -197,16 +190,18 @@ class ExtendedStatsCatBoostPredictor(AbstractPredictor):
                 self.get_feature_vector(season, game.team_a_id, game.team_b_id)
             ]
 
-            prob = bound_probability(self.clf.predict_proba(features))
+            prob = bound_probability(self.clf.predict_proba(features)[0])
             game_predictions.append(GamePrediction(game, prob))
             # print(str(features) + ' -- ' + str(prob))
         print('predictions done for season ' + str(season))
         return game_predictions
 
 
-class ExtendedStatsCatBoostPredictorEvaluator(PredictorEvaluationTemplate):
+class ExtendedStatsDeepNNPredictorEvaluator(PredictorEvaluationTemplate):
     def __init__(self) -> None:
         super().__init__()
-        self.predictor = ExtendedStatsCatBoostPredictor(detailed_stats_with_seeds_df, load_tourney_compact_results)
+        self.predictor = ExtendedStatsDeepNNPredictor(
+            detailed_stats_with_seeds_df, clutch_wins_df, load_tourney_compact_results
+        )
         self.active_seasons = range(2003, 2019)  # set([x.season for x in load_detailed_box()])
-        self.predictor_description = 'extended_stats_tree_catboost_v3'
+        self.predictor_description = 'deep_nn'
