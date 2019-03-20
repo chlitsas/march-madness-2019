@@ -4,7 +4,7 @@ from catboost import Pool
 
 from src.main.domain.GamePrediction import Game, GamePrediction
 from src.main.domain.data_loaders import load_tourney_compact_results, \
-    detailed_stats_with_seeds_df, results_sequence_map, load_massey_ordinals_df
+    detailed_stats_with_seeds_df, results_sequence_map, load_massey_ordinals_df, load_tourney_seeds
 from src.main.predictions.evaluation import PredictorEvaluationTemplate
 from src.main.predictions.predictors import AbstractPredictor, bound_probability
 
@@ -113,6 +113,19 @@ class ExtendedStatsCatBoostPredictor(AbstractPredictor):
                   'T2PF': 'mean'  # 35
                   })
 
+    def init_data(self, season):
+        # {'AP', 'WOL', 'RTH', 'WLK', 'DOL', 'MOR', 'USA', 'SAG', 'RPI', 'POM', 'COL'}
+        self.ratings = self.massey_df[
+            (self.massey_df.Season == season) &
+            (self.massey_df.SystemName == 'POM')
+        ]
+
+        seeds = [x for x in load_tourney_seeds() if x.season == season]
+        self.max_seed = max([x.get_seed() for x in seeds])
+        self.seeds_map = {}
+        for seed in seeds:
+            self.seeds_map[seed.team_id] = seed.get_seed()
+
     def win_streak(self, season_id, team_id, limit):
         data = self.results_sequence[str(season_id)+'-'+str(team_id)][-limit:]
         return 100*(data.count('W'))/len(data)
@@ -123,10 +136,10 @@ class ExtendedStatsCatBoostPredictor(AbstractPredictor):
 
     def get_feature_vector(self, season, team1_id, team2_id):
         diff = 353 # self.data.OrdinalRank.max()-self.data.OrdinalRank.min()
-        team_a_min = self.data[self.data.TeamID == team1_id].OrdinalRank.min()
-        team_b_min = self.data[self.data.TeamID == team2_id].OrdinalRank.min()
-        team_a_max = self.data[self.data.TeamID == team1_id].OrdinalRank.max()
-        team_b_max = self.data[self.data.TeamID == team2_id].OrdinalRank.max()
+        team_a_min = self.ratings[self.ratings.TeamID == team1_id].OrdinalRank.min()
+        team_b_min = self.ratings[self.ratings.TeamID == team2_id].OrdinalRank.min()
+        team_a_max = self.ratings[self.ratings.TeamID == team1_id].OrdinalRank.max()
+        team_b_max = self.ratings[self.ratings.TeamID == team2_id].OrdinalRank.max()
 
         team_a_advantage = 0
         if team_a_max < team_b_min:
@@ -173,10 +186,7 @@ class ExtendedStatsCatBoostPredictor(AbstractPredictor):
         train_data = []
         train_results = []
         for season in seasons:
-            # {'AP', 'WOL', 'RTH', 'WLK', 'DOL', 'MOR', 'USA', 'SAG', 'RPI', 'POM', 'COL'}
-            self.data = self.massey_df[
-                (self.massey_df.Season == season)
-            ]
+            self.init_data(season)
             for result in self.load_tourney_compact_results_function(season):
                 if result.w_team_id < result.l_team_id:
                     train_data.append(self.get_feature_vector(season, result.w_team_id, result.l_team_id))
@@ -190,6 +200,7 @@ class ExtendedStatsCatBoostPredictor(AbstractPredictor):
         print('training is done')
 
     def get_predictions(self, season: int, games: [Game]) -> [GamePrediction]:
+        self.init_data(season)
         game_predictions = []
         print('starting predictions for season ' + str(season))
         for game in games:

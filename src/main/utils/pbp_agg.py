@@ -72,7 +72,7 @@ def annotate_run_moments(moments):
 def calculate_runs():
     result = []
     for year in range(2010, 2019):
-        events_csv_file = pkgutil.get_data('data.PlayByPlay_' + str(year), 'Events_' + str(year) + '.csv')
+        events_csv_file = pkgutil.get_data('newdata.PlayByPlay_' + str(year), 'Events_' + str(year) + '.csv')
         data = csv.DictReader(io.StringIO(events_csv_file.decode('utf-8')))
         list_data = list(data)
         final_data = []
@@ -93,7 +93,7 @@ def calculate_runs():
 def calculate_clutch_wins():
     result = []
     for year in range(2010, 2019):
-        events_csv_file = pkgutil.get_data('data.PlayByPlay_' + str(year), 'Events_' + str(year) + '.csv')
+        events_csv_file = pkgutil.get_data('newdata.PlayByPlay_' + str(year), 'Events_' + str(year) + '.csv')
         data = csv.DictReader(io.StringIO(events_csv_file.decode('utf-8')))
         final_data = []
         for x in data:
@@ -173,7 +173,7 @@ def read_runs_as_df():
 
 
 def read_clutch_wins_as_df():
-    tourney_csv_file = pkgutil.get_data("data.DataFiles", "NCAATourneyCompactResults.csv")
+    tourney_csv_file = pkgutil.get_data("newdata.DataFiles", "NCAATourneyCompactResults.csv")
     tourney_csv = pd.read_csv(io.StringIO(tourney_csv_file.decode('utf-8')))
 
     df = pd.read_csv('./clutch_wins.csv')
@@ -217,7 +217,7 @@ def read_clutch_wins_as_df():
 
 
 def read_runs_analysis_as_df():
-    tourney_csv_file = pkgutil.get_data("data.DataFiles", "NCAATourneyCompactResults.csv")
+    tourney_csv_file = pkgutil.get_data("newdata.DataFiles", "NCAATourneyCompactResults.csv")
     tourney_csv = pd.read_csv(io.StringIO(tourney_csv_file.decode('utf-8')))
 
     df = pd.read_csv('./runs_analysis.csv')
@@ -284,7 +284,7 @@ def read_runs_analysis_as_df():
 
 
 def create_wins_looses_string():
-    reg_season_csv_file = pkgutil.get_data("data.DataFiles", "RegularSeasonCompactResults.csv")
+    reg_season_csv_file = pkgutil.get_data("newdata.DataFiles", "RegularSeasonCompactResults.csv")
     data = csv.DictReader(io.StringIO(reg_season_csv_file.decode('utf-8')))
     data_map = {}
     for x in data:
@@ -315,7 +315,8 @@ if __name__ == '__main__':
     # read_runs_as_df()
     # read_runs_analysis_as_df()
     # read_clutch_wins_as_df()
-    # create_wins_looses_string()
+    #
+    create_wins_looses_string()
     df = load_massey_ordinals_df()
 
     data = df[(df.Season == 2003) & (df.RankingDayNum == 35) & (df.SystemName == 'SEL')]

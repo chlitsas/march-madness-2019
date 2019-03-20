@@ -16,4 +16,14 @@ def bound_probability(prob):
     if prob < 0:
         print('wrong probability with value '+str(prob))
         return 0.01
-    return 0.01 + prob * 0.98
+    return 0.001 + prob * 0.998
+
+
+def bound_probability_if_needed(prob):
+    if prob >= 1:
+        print('wrong probability with value '+str(prob))
+        return 0.99
+    if prob <= 0:
+        print('wrong probability with value '+str(prob))
+        return 0.01
+    return prob

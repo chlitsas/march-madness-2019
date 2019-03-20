@@ -7,13 +7,13 @@ import pandas as pd
 
 from src.main.domain.CompactResult import CompactResult
 from src.main.domain.DetailedResult import DetailedResult
-from src.main.domain.GamePrediction import create_valid_game
+from src.main.domain.GamePrediction import create_valid_game, Game
 from src.main.domain.PlayByPlayEvent import PlayByPlayEvent
 from src.main.domain.TourneySeed import TourneySeed
 
 
 def load_pbp():
-    with open('../data/PrelimData2018/Events_Prelim2018.csv') as csv_file:
+    with open('../newdata/PrelimData2018/Events_Prelim2018.csv') as csv_file:
         data = csv.DictReader(csv_file)
         cnt = 0
         for row in data:
@@ -31,7 +31,7 @@ def load_pbp():
 
 
 def load_tourney_seeds():
-    csv_file = pkgutil.get_data("data.DataFiles", "NCAATourneySeeds.csv")
+    csv_file = pkgutil.get_data("newdata.DataFiles", "NCAATourneySeeds.csv")
 
     data = csv.DictReader(io.StringIO(csv_file.decode('utf-8')))
 
@@ -47,17 +47,34 @@ def load_tourney_seeds():
     return result
 
 
+def load_games_to_submit():
+    csv_file = pkgutil.get_data("newdata", "SampleSubmissionStage2.csv")
+
+    data = csv.DictReader(io.StringIO(csv_file.decode('utf-8')))
+
+    result = []
+    for row in data:
+        game_id = row['ID'].split('_')
+        result.append(
+            Game(
+                team_a_id=int(game_id[1]),
+                team_b_id=int(game_id[2])
+            )
+        )
+    return result
+
+
 def load_massey_ordinals_df():
-    csv_file = pkgutil.get_data("data", "MasseyOrdinals.csv")
+    csv_file = pkgutil.get_data("newdata", "MasseyOrdinals.csv")
 
     return pd.read_csv(io.StringIO(csv_file.decode('utf-8')))
 
 
 def load_compact_results(regular_season=False):
     if regular_season:
-        csv_file = pkgutil.get_data("data.DataFiles", "RegularSeasonCompactResults.csv")
+        csv_file = pkgutil.get_data("newdata.DataFiles", "RegularSeasonCompactResults.csv")
     else:
-        csv_file = pkgutil.get_data("data.DataFiles", "NCAATourneyCompactResults.csv")
+        csv_file = pkgutil.get_data("newdata.DataFiles", "NCAATourneyCompactResults.csv")
     data = csv.DictReader(io.StringIO(csv_file.decode('utf-8')))
 
     result = []
@@ -90,9 +107,9 @@ def load_tourney_games(season: int):
 
 def load_detailed_box(regular_season=False):
     if regular_season:
-        csv_file = pkgutil.get_data("data.DataFiles", "RegularSeasonDetailedResults.csv")
+        csv_file = pkgutil.get_data("newdata.DataFiles", "RegularSeasonDetailedResults.csv")
     else:
-        csv_file = pkgutil.get_data("data.DataFiles", "NCAATourneyDetailedResults.csv")
+        csv_file = pkgutil.get_data("newdata.DataFiles", "NCAATourneyDetailedResults.csv")
     data = csv.DictReader(io.StringIO(csv_file.decode('utf-8')))
 
     result = []
@@ -139,19 +156,19 @@ def load_detailed_box(regular_season=False):
 
 
 def clutch_wins_df():
-    clutch_wins_csv_file = pkgutil.get_data("data.Calculated", "clutch_wins.csv")
+    clutch_wins_csv_file = pkgutil.get_data("newdata.Calculated", "clutch_wins.csv")
 
     return pd.read_csv(io.StringIO(clutch_wins_csv_file.decode('utf-8')))
 
 
 def results_sequence_map():
-    results_sequence_file = pkgutil.get_data("data.Calculated", "results_sequence.json")
+    results_sequence_file = pkgutil.get_data("newdata.Calculated", "results_sequence.json")
     return json.loads(results_sequence_file.decode())
 
 
 def detailed_stats_with_seeds_df():
-    regular_season_csv_file = pkgutil.get_data("data.DataFiles", "RegularSeasonDetailedResults.csv")
-    seeds_csv_file = pkgutil.get_data("data.DataFiles", "NCAATourneySeeds.csv")
+    regular_season_csv_file = pkgutil.get_data("newdata.DataFiles", "RegularSeasonDetailedResults.csv")
+    seeds_csv_file = pkgutil.get_data("newdata.DataFiles", "NCAATourneySeeds.csv")
 
     seeds_csv = pd.read_csv(io.StringIO(seeds_csv_file.decode('utf-8')))
     regular_season_csv = pd.read_csv(io.StringIO(regular_season_csv_file.decode('utf-8')))

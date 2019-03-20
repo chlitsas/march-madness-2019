@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 
 from src.main.domain.GamePrediction import Game, GamePrediction
 from src.main.domain.data_loaders import load_tourney_compact_results, \
-    detailed_stats_with_seeds_df, clutch_wins_df, results_sequence_map
+    detailed_stats_with_seeds_df, clutch_wins_df, results_sequence_map, load_tourney_seeds, load_massey_ordinals_df
 from src.main.predictions.evaluation import PredictorEvaluationTemplate
 from src.main.predictions.predictors import AbstractPredictor, bound_probability
 
@@ -33,16 +33,12 @@ class LightGBM:
             'boosting_type': 'gbdt',
             'objective': 'regression',
             'metric': 'binary_logloss',
-            'num_leaves': 31,
-            'learning_rate': 0.001,
-            'feature_fraction': 0.09,
-            'bagging_fraction': 0.08,
+            'num_leaves': 3,
+            'learning_rate': 0.005,
+            'feature_fraction': 0.001,
+            'bagging_fraction': 0.5,
             'bagging_freq': 15,
-            'verbose': 1,
-            'max_depth': 3,
-            'max_bin': 300,
-            'n_estimators': 30000,
-            'num_iterations': 10000
+            'verbose': 1
         }
 
         print('Starting training...')
@@ -120,25 +116,36 @@ class ExtendedStatsLGBMPredictor(AbstractPredictor):
                   'T1Region': 'first'  # 24
                   })
 
-        self.features_wins = clutch_wins_df_function() \
-            .groupby(['Season', 'TeamID'], as_index=False) \
-            .agg({
-            'ClutchWin': 'sum',
-            'ClutchLoose': 'sum',
-            'EasyWin': 'sum',
-            'EasyLoose': 'sum'
-        })
         self.results_sequence = results_sequence_map()
+        self.massey_df = load_massey_ordinals_df()
+
+    def init_data(self, season):
+        # {'AP', 'WOL', 'RTH', 'WLK', 'DOL', 'MOR', 'USA', 'SAG', 'RPI', 'POM', 'COL'}
+        self.ratings = self.massey_df[
+            (self.massey_df.Season == season) &
+            (self.massey_df.SystemName == 'POM')
+        ]
+
+        seeds = [x for x in load_tourney_seeds() if x.season == season]
+        self.max_seed = max([x.get_seed() for x in seeds])
+        self.seeds_map = {}
+        for seed in seeds:
+            self.seeds_map[seed.team_id] = seed.get_seed()
 
     def win_streak(self, season_id, team_id, limit):
         data = self.results_sequence[str(season_id)+'-'+str(team_id)][-limit:]
         return (data.count('w')+data.count('W'))/len(data)
 
+    def wins_percentage(self, season_id, team_id):
+        data = self.results_sequence[str(season_id)+'-'+str(team_id)]
+        return (data.count('W')+data.count('w'))/len(data)
+
     def get_feature_vector(self, season, team1_id, team2_id):
+        team_a_mass = self.ratings[self.ratings.TeamID == team1_id].OrdinalRank.iloc[-1]
+        team_b_mass = self.ratings[self.ratings.TeamID == team2_id].OrdinalRank.iloc[-1]
+
         team1 = None
         team2 = None
-        team1_wins = None
-        team2_wins = None
         for row in self.features[
             (self.features['T1TeamID'] == team1_id) & (self.features['Season'] == season)].iterrows():
             index, d = row
@@ -151,33 +158,19 @@ class ExtendedStatsLGBMPredictor(AbstractPredictor):
             team2 = d.tolist()[2:]
             break
 
-        for row in self.features_wins[
-            (self.features_wins['TeamID'] == team1_id) & (self.features_wins['Season'] == season)].iterrows():
-            index, d = row
-            team1_wins = d.tolist()[2:]
-            break
-
-        for row in self.features_wins[
-            (self.features_wins['TeamID'] == team2_id) & (self.features_wins['Season'] == season)].iterrows():
-            index, d = row
-            team2_wins = d.tolist()[2:]
-            break
-
         stats = [
             team1[0],
-            team2[0],
             team1[1],
-            team2[1],
             team1[2],
-            team2[2]
+            team2[0],
+            team2[1],
+            team2[2],
+            self.wins_percentage(season, team1_id),
+            self.wins_percentage(season, team2_id),
+            team_a_mass,
+            team_b_mass
             #percentise_diff(team2[12], team1[11], 5)
         ]
-        #wins = [
-        #    percentise_diff(team1_wins[0], team2_wins[0], 4),
-        #    percentise_diff(team2_wins[1], team1_wins[1], 4),
-        #    percentise_diff(team1_wins[2], team2_wins[2], 5),
-        #    percentise_diff(team2_wins[3], team1_wins[3], 5)
-        #]
 
         return stats
 
@@ -186,6 +179,7 @@ class ExtendedStatsLGBMPredictor(AbstractPredictor):
         train_data = []
         train_results = []
         for season in seasons:
+            self.init_data(season)
             for result in self.load_tourney_compact_results_function(season):
                 if result.w_team_id < result.l_team_id:
                     train_data.append(self.get_feature_vector(season, result.w_team_id, result.l_team_id))
@@ -201,6 +195,7 @@ class ExtendedStatsLGBMPredictor(AbstractPredictor):
         print('training is done')
 
     def get_predictions(self, season: int, games: [Game]) -> [GamePrediction]:
+        self.init_data(season)
         game_predictions = []
         print('starting predictions for season ' + str(season))
         for game in games:
